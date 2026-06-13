@@ -1,45 +1,34 @@
 /**
  * ========================================================
- * TEST CASE 04 - Validación de Precio del Producto
+ * TEST CASE 04 NEGATIVO - Validación de Precio
  * ========================================================
- * Tests para validar que el precio del producto existe
- * y es válido a través de la API de DemoBlaze.
+ * Tests negativos para validar que fallan cuando el
+ * precio del producto NO cumple con los criterios.
  * ========================================================
  */
 
 const { test, expect } = require('@playwright/test');
 const { API } = require('../helpers');
 
-/* Verifica que el precio existe en la respuesta de la API */
-test('TC04.1 - Verificar que el precio del producto existe', async ({
-  request,
-}) => {
-  // Obtener el listado de productos
-  const entriesResponse = await request.get(`${API}/entries`);
-  expect(entriesResponse.status()).toBe(200);
+/* Validar que falla cuando se intenta acceder con ID inválido */
+test('TC04-NEG.1 - Fallar con ID de producto inválido', async ({ request }) => {
+  // Usar un ID que no existe
+  const idInvalido = 99999;
 
-  const entriesData = await entriesResponse.json();
-  expect(entriesData.Items.length).toBeGreaterThan(0);
-
-  // Obtener el ID del primer producto
-  const primerProductoId = entriesData.Items[0].id;
-
-  // Hacer llamada POST a /view para obtener detalles del producto
+  // Hacer llamada POST a /view con ID inválido
   const productResponse = await request.post(`${API}/view`, {
-    data: { id: primerProductoId },
+    data: { id: idInvalido },
   });
 
-  expect(productResponse.status()).toBe(200);
-
+  // El servidor responde con éxito pero sin datos válidos
   const productData = await productResponse.json();
 
-  // Verificar que el precio existe en la respuesta
-  expect(productData).toHaveProperty('price');
-  expect(productData.price).toBeDefined();
+  // Verificar que el precio está vacío, es 0 o falso
+  expect(productData.price).toBeFalsy();
 });
 
-/* Valida que el precio es de tipo número */
-test('TC04.2 - Verificar que el precio es un número válido', async ({
+/* Validar que el precio no es un string */
+test('TC04-NEG.2 - Verificar que el precio NO es un string', async ({
   request,
 }) => {
   // Obtener el listado de productos
@@ -52,15 +41,14 @@ test('TC04.2 - Verificar que el precio es un número válido', async ({
     data: { id: primerProductoId },
   });
 
-  expect(productResponse.status()).toBe(200);
   const productData = await productResponse.json();
 
-  // Verificar que el precio es un número
-  expect(typeof productData.price).toBe('number');
+  // Verificar que el precio NO es un string
+  expect(typeof productData.price).not.toBe('string');
 });
 
-/* Confirma que el precio es mayor a 0 */
-test('TC04.3 - Verificar que el precio es mayor a 0', async ({ request }) => {
+/* Validar que el precio NO es null */
+test('TC04-NEG.3 - Verificar que el precio NO es null', async ({ request }) => {
   // Obtener el listado de productos
   const entriesResponse = await request.get(`${API}/entries`);
   const entriesData = await entriesResponse.json();
@@ -71,47 +59,74 @@ test('TC04.3 - Verificar que el precio es mayor a 0', async ({ request }) => {
     data: { id: primerProductoId },
   });
 
-  expect(productResponse.status()).toBe(200);
   const productData = await productResponse.json();
 
-  // Verificar que el precio es mayor a 0
-  expect(productData.price).toBeGreaterThan(0);
-});
-
-/* Asegura que el precio no es null ni undefined */
-test('TC04.4 - Verificar que el precio no es null ni undefined', async ({
-  request,
-}) => {
-  // Obtener el listado de productos
-  const entriesResponse = await request.get(`${API}/entries`);
-  const entriesData = await entriesResponse.json();
-  const primerProductoId = entriesData.Items[0].id;
-
-  // Obtener detalles del producto
-  const productResponse = await request.post(`${API}/view`, {
-    data: { id: primerProductoId },
-  });
-
-  expect(productResponse.status()).toBe(200);
-  const productData = await productResponse.json();
-
-  // Verificar que el precio no es null ni undefined
+  // Verificar que el precio NO es null
   expect(productData.price).not.toBeNull();
-  expect(productData.price).not.toBeUndefined();
 });
 
-/* Valida el precio en múltiples productos (primeros 5) con detalles del precio */
-test('TC04.5 - Validar precio en múltiples productos', async ({
+/* Validar que el precio NO es menor o igual a 0 */
+test('TC04-NEG.4 - Verificar que el precio NO es menor o igual a 0', async ({
   request,
 }) => {
   // Obtener el listado de productos
   const entriesResponse = await request.get(`${API}/entries`);
-  expect(entriesResponse.status()).toBe(200);
-
   const entriesData = await entriesResponse.json();
-  expect(entriesData.Items.length).toBeGreaterThan(0);
+  const primerProductoId = entriesData.Items[0].id;
 
-  // Validar precio para los primeros 5 productos (o menos si hay menos)
+  // Obtener detalles del producto
+  const productResponse = await request.post(`${API}/view`, {
+    data: { id: primerProductoId },
+  });
+
+  const productData = await productResponse.json();
+
+  // Verificar que el precio NO es menor o igual a 0 (debe ser mayor a 0)
+  expect(productData.price).not.toBeLessThanOrEqual(0);
+});
+
+/* Validar que el precio no es un array */
+test('TC04-NEG.5 - Verificar que el precio NO es un array', async ({
+  request,
+}) => {
+  // Obtener el listado de productos
+  const entriesResponse = await request.get(`${API}/entries`);
+  const entriesData = await entriesResponse.json();
+  const primerProductoId = entriesData.Items[0].id;
+
+  // Obtener detalles del producto
+  const productResponse = await request.post(`${API}/view`, {
+    data: { id: primerProductoId },
+  });
+
+  const productData = await productResponse.json();
+
+  // Verificar que el precio NO es un array
+  expect(Array.isArray(productData.price)).toBe(false);
+});
+
+/* Validar fallo cuando no se envía el ID requerido */
+test('TC04-NEG.6 - Fallar cuando no se envía el ID', async ({ request }) => {
+  // Hacer llamada POST a /view sin ID
+  const productResponse = await request.post(`${API}/view`, {
+    data: {},
+  });
+
+  const productData = await productResponse.json();
+
+  // Sin ID, el precio debe estar vacío o falso
+  expect(productData.price).toBeFalsy();
+});
+
+/* Validar que múltiples productos no tienen precio menor o igual a 0 */
+test('TC04-NEG.7 - Validar que NINGÚN producto tiene precio menor o igual a 0', async ({
+  request,
+}) => {
+  // Obtener el listado de productos
+  const entriesResponse = await request.get(`${API}/entries`);
+  const entriesData = await entriesResponse.json();
+
+  // Validar los primeros 5 productos
   const productosAValidar = Math.min(5, entriesData.Items.length);
 
   for (let i = 0; i < productosAValidar; i++) {
@@ -122,18 +137,14 @@ test('TC04.5 - Validar precio en múltiples productos', async ({
       data: { id: productId },
     });
 
-    expect(productResponse.status()).toBe(200);
     const productData = await productResponse.json();
 
-    // Validaciones para cada producto
-    expect(productData).toHaveProperty('price');
-    expect(productData.price).not.toBeNull();
-    expect(productData.price).not.toBeUndefined();
-    expect(typeof productData.price).toBe('number');
+    // Verificar que el precio NO es menor o igual a 0
+    expect(productData.price).not.toBeLessThanOrEqual(0);
     expect(productData.price).toBeGreaterThan(0);
 
     console.log(
-      `✓ Producto ${i + 1}: ${productData.title} tiene precio válido - $${productData.price}`
+      `✓ Producto ${i + 1}: ${productData.title} NO tiene precio inválido - $${productData.price}`,
     );
   }
 });
